@@ -12,7 +12,13 @@ class RoomHandler(websocket.WebSocketHandler):
     clients = set()
     admin_ip = []
     deny_ip = []
-   
+    def check_origin(self, origin):
+        return True
+    def set_default_headers(self):
+        self.set_header('Access-Control-Allow-Origin', '*')
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.set_header('Access-Control-Max-Age', 1000)
+        self.set_header('Access-Control-Allow-Headers', '*')
     @staticmethod
     def send_to_all(message):
       for c in RoomHandler.clients:
@@ -25,6 +31,7 @@ class RoomHandler(websocket.WebSocketHandler):
             'type':'info',
             'number':len(RoomHandler.clients)
         }
+        print self.request.remote_ip
         RoomHandler.send_to_all(ret)
         
             # print str(e)

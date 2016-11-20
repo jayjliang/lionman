@@ -40,7 +40,7 @@ class PageNotFoundHandler(tornado.web.RequestHandler):
 
 if __name__ == "__main__":
     tornado.options.parse_command_line()
-    Application().listen(options.port)
+    Application().listen(options.port, xheaders=True)
     try:
         tornado.ioloop.IOLoop.instance().start()
     except KeyboardInterrupt:
