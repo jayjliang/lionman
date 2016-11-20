@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1, minimum-scale=1,user-scalable=no"/>
+    <script src="//cdn.realtimecat.com/realtimecat/realtimecat-0.4.min.js"></script>
+    <link href="http://cdn.bootcss.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://cdn.bootcss.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" rel="stylesheet">
+    <style>
+      .main {
+       width: 80%;
+       float: left;
+      }
+      .role {
+        width: 20%;
+        float: left;
+        background: red;
+      }
+      
+
+    </style>
+  </head>
+  <body>
+  <div class="content">
+    <div class="main" id="main">
+    </div>
+    <div class="role">
+      <p>role</p>
+    </div>
+  </div>
+  
+  
+  
+
+
+
+  <script src="http://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+  <script src="http://cdn.bootcss.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+  <script>
+
+    var storage = function() {
+      this.set=function(key,data) {
+          return window.localStorage.setItem(key,window.JSON.stringify(data));
+      };
+      this.get=function(key) {
+          return window.JSON.parse(window.localStorage.getItem(key));
+      };
+      this.remove=function(key) {
+          return window.localStorage.removeItem(key);
+      };
+    }
+
+    $(document).ready(function() {
+
+        var url = "127.0.0.1:7000";
+        var timeout = 1*1000;
+        var max_length = 500;
+        var count=1;
+        var ws;
+        var sto = new storage();
+        //初始化
+        function init(){
+            connect();
+        }
+        
+        //连接websocket
+        function connect(){
+            if(!window.WebSocket){
+                window.WebSocket = window.MozWebSocket;
+            }
+            if(window.WebSocket){
+                ws = new WebSocket("ws://"+url+"/ws");
+                ws.onopen = function(){
+                    console.log("connect");
+                }
+                ws.onmessage = function(event) {
+                    
+                };
+                ws.onclose = function(event) {
+                    console.log("closed");
+                    $("#message").append('</p></div>');
+                };
+            } else {
+                alert("当前浏览器不支持，请换用其他浏览器");
+            }
+        }
+        init();
+        
+        getToken();
+    });
+
+    function getToken() {
+      var key = "c0f57101-e490-44b0-82c5-96a7b6cc81da";
+      var secure_key = "e5ec3297-8423-45d4-97ec-8ed6222aa7fe";
+      var session_id = "af125617-508d-4862-b8f3-9130ade568aa";
+      jQuery.ajax({
+        url: 'https://api.realtimecat.com/v0.4/sessions/' + session_id + '/tokens',
+        headers: {
+          "X-RTCAT-APIKEY": key,
+          "X-RTCAT-SECRET": secure_key 
+        },
+        type: 'POST',
+        data: {
+          'type': 'pub',
+        },
+        success: function(data, textStatus, xhr) {
+          initVideo(jQuery, data.uuid);
+        },
+        error: function(xhr, textStatus, errorThrown) {
+         console.log(xhr);
+        }
+      });
+    }
+
+    function initVideo($, token) {
+      var session;
+         var localStream;
+         var mediaList = document.querySelector('#main');
+
+         /**************************************
+         *               建立会话
+         ***************************************/
+
+         // 使用token新建会话，请将此处的Token替换为
+         // 从http://dashboard.shishimao.com/生成的Token
+         session = new RTCat.Session(token);
+
+         session.on('connected', function (users) {
+
+             console.log('Session connected');
+
+             localStream = new RTCat.Stream();
+
+             localStream.on('accepted', function () {
+                     console.log('stream accepted');
+                     displayStream('self', localStream);
+                     session.send({stream: localStream});
+                 }
+             );
+
+             localStream.on('error', function (err) {
+                 console.error(err);
+             });
+
+             localStream.init();
+
+         });
+
+         session.on('in', function (token) {
+             console.log('someone in');
+             if (localStream) {
+                 session.sendTo({to: token, stream: localStream});
+             }
+         });
+
+         session.on('out', function (token) {
+             console.log('someone out');
+         });
+
+         session.on('remote', function (r_channel) {
+             var id = r_channel.getId();
+             r_channel.on('stream', function (stream) {
+                 displayStream(id, stream);
+             });
+             r_channel.once('close', function () {
+                 $('#peer-' + id).parent().remove();
+             });
+         });
+
+         session.connect();
+
+         /********************************
+          *           工具函数
+          ********************************/
+         // 显示流
+         function displayStream(id, stream) {
+
+             // Video container
+             var videoContainer = document.createElement("div");
+             videoContainer.setAttribute('style', "width: 300px; height:300px;");
+
+             // Video player
+             var videoPlayer = document.createElement('div');
+             videoPlayer.setAttribute("id", "peer-" + id);
+
+             videoContainer.appendChild(videoPlayer);
+             mediaList.appendChild(videoContainer);
+
+             stream.play("peer-" + id);
+         }
+
+    }
+
+  </script>
+</body>
+</html>
